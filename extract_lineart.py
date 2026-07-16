@@ -6,7 +6,22 @@ from pathlib import Path
 
 import cv2
 
-from app.lineart import DEFAULT_THRESHOLD, extract_lineart
+from app.lineart import (
+    DEFAULT_LINE_COLOR,
+    DEFAULT_THRESHOLD,
+    colorize_lineart,
+    extract_lineart,
+    parse_line_color,
+)
+
+
+def line_color_argument(value: str) -> str:
+    """Validate a command-line line color while retaining its HEX representation."""
+    try:
+        parse_line_color(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
+    return value
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -24,6 +39,13 @@ def parse_arguments() -> argparse.Namespace:
         metavar="0-255",
         help=f"Brightness threshold from 0 to 255 (default: {DEFAULT_THRESHOLD})",
     )
+    parser.add_argument(
+        "--line-color",
+        type=line_color_argument,
+        default=DEFAULT_LINE_COLOR,
+        metavar="#RRGGBB",
+        help="Line color in #RRGGBB format (default: #000000)",
+    )
     return parser.parse_args()
 
 
@@ -38,11 +60,12 @@ def main() -> int:
         return 1
     try:
         lineart = extract_lineart(image, args.threshold)
+        colored_lineart = colorize_lineart(lineart, parse_line_color(args.line_color))
     except ValueError as error:
         print(f"Error: {error}")
         return 1
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    if not cv2.imwrite(str(args.output), lineart):
+    if not cv2.imwrite(str(args.output), colored_lineart):
         print(f"Error: could not write output image: {args.output}")
         return 1
     return 0

@@ -20,19 +20,33 @@ def test_health_and_index():
     assert 'text/html' in response.headers['content-type']
 
 
-def test_extract_png_and_default_threshold():
+def test_extract_png_and_default_threshold_uses_black_lines():
     data = png_bytes(np.array([[80, 81]], dtype=np.uint8))
     response = client.post('/api/extract', files={'image': ('sample.png', data, 'image/png')})
     assert response.status_code == 200
     assert response.headers['content-type'] == 'image/png'
     assert 'sample-lineart.png' in response.headers['content-disposition']
-    output = cv2.imdecode(np.frombuffer(response.content, np.uint8), cv2.IMREAD_GRAYSCALE)
-    assert np.array_equal(output, np.array([[0, 255]], dtype=np.uint8))
+    output = cv2.imdecode(np.frombuffer(response.content, np.uint8), cv2.IMREAD_COLOR)
+    assert np.array_equal(output, np.array([[[0, 0, 0], [255, 255, 255]]], dtype=np.uint8))
+
+
+def test_extract_applies_requested_line_color():
+    data = png_bytes(np.array([[80, 81]], dtype=np.uint8))
+    response = client.post(
+        '/api/extract', data={'line_color': '#FF0000'},
+        files={'image': ('sample.png', data, 'image/png')},
+    )
+    assert response.status_code == 200
+    output = cv2.imdecode(np.frombuffer(response.content, np.uint8), cv2.IMREAD_COLOR)
+    assert output is not None
+    assert np.array_equal(output, np.array([[[0, 0, 255], [255, 255, 255]]], dtype=np.uint8))
 
 
 def test_extract_rejects_invalid_input():
     bad_threshold = client.post('/api/extract', data={'threshold': '256'}, files={'image': ('sample.png', png_bytes(np.zeros((1, 1), dtype=np.uint8)), 'image/png')})
     assert bad_threshold.status_code == 422
+    bad_color = client.post('/api/extract', data={'line_color': '#fff'}, files={'image': ('sample.png', png_bytes(np.zeros((1, 1), dtype=np.uint8)), 'image/png')})
+    assert bad_color.status_code == 422
     invalid_image = client.post('/api/extract', files={'image': ('bad.png', b'not an image', 'image/png')})
     assert invalid_image.status_code == 400
 

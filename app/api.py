@@ -10,7 +10,13 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from app.lineart import DEFAULT_THRESHOLD, extract_lineart
+from app.lineart import (
+    DEFAULT_LINE_COLOR,
+    DEFAULT_THRESHOLD,
+    colorize_lineart,
+    extract_lineart,
+    parse_line_color,
+)
 
 app = FastAPI(title="AI Lineart Cleaner")
 STATIC_DIR = Path(__file__).parent / "static"
@@ -43,6 +49,7 @@ def download_filename(filename: str) -> tuple[str, str]:
 async def extract(
     image: UploadFile | None = File(default=None),
     threshold: int = Form(default=DEFAULT_THRESHOLD),
+    line_color: str = Form(default=DEFAULT_LINE_COLOR),
 ) -> Response:
     """Decode a PNG/JPEG upload and return its line-art PNG without persisting it."""
     if image is None or not image.filename:
@@ -51,13 +58,18 @@ async def extract(
         raise HTTPException(status_code=400, detail="Only PNG and JPEG images are supported.")
     if not 0 <= threshold <= 255:
         raise HTTPException(status_code=422, detail="Threshold must be between 0 and 255.")
+    try:
+        rgb_line_color = parse_line_color(line_color)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     data = await image.read()
     decoded = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
     if decoded is None:
         raise HTTPException(status_code=400, detail="The uploaded file could not be decoded as an image.")
     try:
         lineart = extract_lineart(decoded, threshold)
-        success, encoded = cv2.imencode(".png", lineart)
+        colored_lineart = colorize_lineart(lineart, rgb_line_color)
+        success, encoded = cv2.imencode(".png", colored_lineart)
     except (ValueError, cv2.error) as error:
         raise HTTPException(status_code=400, detail=f"Could not process image: {error}") from error
     if not success:
