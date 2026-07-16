@@ -11,3 +11,6 @@ output/*
 Thumbs.db
 *.swp
 *~
+tests/
+.devcontainer/
+requirements-dev.txt

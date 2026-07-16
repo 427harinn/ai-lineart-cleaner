@@ -1,19 +1,8 @@
 {
   "name": "AI Lineart Cleaner",
-  "build": {
-    "dockerfile": "Dockerfile",
-    "context": ".."
-  },
-  "workspaceFolder": "/workspaces/ai-lineart-cleaner",
-  "remoteUser": "vscode",
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "ms-python.python"
-      ],
-      "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python"
-      }
-    }
-  }
+  "build": { "dockerfile": "Dockerfile", "context": ".." },
+  "workspaceFolder": "/workspace/ai-lineart-cleaner",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace/ai-lineart-cleaner,type=bind",
+  "forwardPorts": [8000],
+  "customizations": { "vscode": { "extensions": ["ms-python.python"] } }
 }

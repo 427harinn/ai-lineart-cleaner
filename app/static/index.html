@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AI Lineart Cleaner</title><link rel="stylesheet" href="/static/styles.css"></head>
+<body><main><h1>AI Lineart Cleaner</h1><p>画像を白背景・黒線のPNG線画へ変換します。しきい値以下の画素が黒になります。</p>
+<section class="controls"><label>画像を選択 <input id="image" type="file" accept="image/png,image/jpeg"></label><label for="threshold-range">しきい値 <input id="threshold-range" type="range" min="0" max="255" value="80" step="1"><input id="threshold-number" type="number" min="0" max="255" value="80" step="1"></label><button id="extract" type="button">線画化</button><span id="loading" hidden>処理中…</span><p id="error" role="alert"></p></section>
+<section class="previews"><figure><figcaption>元画像</figcaption><img id="source-preview" alt="選択した元画像のプレビュー"></figure><figure><figcaption>抽出結果</figcaption><img id="result-preview" alt="抽出結果のプレビュー"><a id="download" hidden download="lineart.png">PNGを保存</a></figure></section>
+</main><script src="/static/app.js"></script></body></html>
