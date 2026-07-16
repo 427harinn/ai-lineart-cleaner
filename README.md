@@ -1,38 +1,86 @@
 # AI Lineart Cleaner
 
-AI生成の説明イラストから、資料やスライドで使いやすい白背景・黒線のPNG線画を試作するための小さなCLIツールです。現段階では、画像をグレースケール化して固定しきい値で二値化するだけの最小限の実装です。
+AI生成の説明イラストを、資料やスライドで使いやすい白背景・黒線のPNG線画へ変換する小さなCLIツールです。画像をグレースケール化し、固定しきい値による二値化で暗い部分を黒線として抽出します。
 
-濃い灰色や濃い茶色など、完全な黒ではない輪郭線も、明るさがしきい値以下なら黒線として抽出します。透明なPNGは、透明部分を白背景として扱います。
+Dockerを使って実行するため、ローカル環境にPython、OpenCV、NumPyを直接インストールする必要はありません。
 
-## セットアップ
+## 必要なもの
 
-Python 3を用意してから、必要なパッケージをインストールします。
+- [Docker](https://www.docker.com/get-started/)
+
+## Dockerイメージをビルドする
+
+リポジトリのルートディレクトリで実行します。
 
 ```bash
-python -m pip install -r requirements.txt
+docker build -t ai-lineart-cleaner .
 ```
 
-## 実行方法
+## 実行方法（macOS / Linux）
 
-入力にはPNGまたはJPEGを指定し、出力には`.png`拡張子を指定してください。出力先の親ディレクトリがない場合は自動的に作成されます。
+変換したいPNGまたはJPEG画像を`input`ディレクトリに配置します。次のコマンドでは、`input/sample.png`を読み込み、変換結果を`output/sample-lineart.png`へ作成します。
 
 ```bash
-python extract_lineart.py input.png output.png
+docker run --rm \
+  -v "$(pwd)/input:/app/input" \
+  -v "$(pwd)/output:/app/output" \
+  ai-lineart-cleaner \
+  input/sample.png output/sample-lineart.png
 ```
 
-しきい値を指定する場合:
+`output`ディレクトリが存在しない場合は、先に作成してください。
 
 ```bash
-python extract_lineart.py input.png output.png --threshold 160
+mkdir -p input output
+```
+
+しきい値を指定する場合は、末尾に`--threshold`を追加します。
+
+```bash
+docker run --rm \
+  -v "$(pwd)/input:/app/input" \
+  -v "$(pwd)/output:/app/output" \
+  ai-lineart-cleaner \
+  input/sample.png output/sample-lineart.png \
+  --threshold 160
+```
+
+## 実行方法（Windows PowerShell）
+
+入力画像を`input`ディレクトリに配置してから、次のコマンドを実行します。出力画像は`output`ディレクトリに作成されます。
+
+```powershell
+docker run --rm `
+  -v "${PWD}/input:/app/input" `
+  -v "${PWD}/output:/app/output" `
+  ai-lineart-cleaner `
+  input/sample.png output/sample-lineart.png
+```
+
+しきい値の指定例:
+
+```powershell
+docker run --rm `
+  -v "${PWD}/input:/app/input" `
+  -v "${PWD}/output:/app/output" `
+  ai-lineart-cleaner `
+  input/sample.png output/sample-lineart.png `
+  --threshold 160
+```
+
+PowerShellでディレクトリがまだない場合は、次のコマンドで作成できます。
+
+```powershell
+New-Item -ItemType Directory -Force input, output
 ```
 
 ## `--threshold` オプション
 
-`--threshold`には`0`から`255`までの整数を指定できます。デフォルト値は`180`です。グレースケール化後、明るさがしきい値以下の画素を黒、それより明るい画素を白にします。
+`--threshold`には`0`から`255`までの整数を指定できます。デフォルト値は`180`です。グレースケール化後、明るさがしきい値以下の画素を黒、それより明るい画素を白にします。濃い灰色や濃い茶色の輪郭線も、明るさがしきい値以下であれば抽出対象になります。透明なPNGは、透明部分を白背景として扱います。
 
 - **しきい値を小さくする**: より暗い部分だけが黒線になります。薄い線や薄い影は除外されやすくなります。
 - **しきい値を大きくする**: より明るい部分まで黒線になります。薄い線を拾いやすくなる一方、色塗りや影も線として抽出されやすくなります。
 
-## 現在の制限と今後の改善候補
+## 現在の制限
 
-この段階では単純な二値化のみを行います。線のかすれ、途切れ、端点接続、線幅補正、色塗りのムラの補正には対応していません。実際のAI生成画像で結果を確認し、将来的にはしきい値の調整支援や、必要に応じた線の補修処理を検討できます。
+現段階では単純な二値化のみを行います。線のかすれ、途切れ、端点接続、線幅補正、色塗りのムラの補正には対応していません。実際のAI生成画像で結果を確認し、今後必要に応じて改善を検討してください。
