@@ -40,6 +40,18 @@ def parse_arguments() -> argparse.Namespace:
         help=f"Brightness threshold from 0 to 255 (default: {DEFAULT_THRESHOLD})",
     )
     parser.add_argument(
+        "--thin-line-assist",
+        action="store_true",
+        help="Use weak local contrast enhancement before thresholding.",
+    )
+    parser.add_argument(
+        "--repair-strength",
+        type=int,
+        default=0,
+        choices=[0, 1, 2],
+        help="Repair tiny line gaps: 0=off, 1=weak, 2=stronger (default: 0)",
+    )
+    parser.add_argument(
         "--line-color",
         type=line_color_argument,
         default=DEFAULT_LINE_COLOR,
@@ -59,7 +71,12 @@ def main() -> int:
         print(f"Error: could not read input image: {args.input}")
         return 1
     try:
-        lineart = extract_lineart(image, args.threshold)
+        lineart = extract_lineart(
+            image,
+            args.threshold,
+            thin_line_assist=args.thin_line_assist,
+            repair_strength=args.repair_strength,
+        )
         colored_lineart = colorize_lineart(lineart, parse_line_color(args.line_color))
     except ValueError as error:
         print(f"Error: {error}")

@@ -31,3 +31,21 @@ def test_cli_rejects_invalid_line_color(tmp_path):
     )
     assert result.returncode == 2
     assert "#RRGGBB" in result.stderr
+
+
+def test_cli_accepts_enhancement_options_and_rejects_invalid_strength(tmp_path):
+    input_path = tmp_path / "input.png"
+    output_path = tmp_path / "output.png"
+    assert cv2.imwrite(str(input_path), np.full((16, 16), 120, dtype=np.uint8))
+    result = subprocess.run(
+        [sys.executable, "extract_lineart.py", str(input_path), str(output_path),
+         "--thin-line-assist", "--repair-strength", "1", "--line-color", "#336699"],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert cv2.imread(str(output_path), cv2.IMREAD_COLOR) is not None
+    invalid = subprocess.run(
+        [sys.executable, "extract_lineart.py", str(input_path), str(output_path),
+         "--repair-strength", "3"], capture_output=True, text=True, check=False,
+    )
+    assert invalid.returncode == 2

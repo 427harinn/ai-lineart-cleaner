@@ -50,6 +50,8 @@ async def extract(
     image: UploadFile | None = File(default=None),
     threshold: int = Form(default=DEFAULT_THRESHOLD),
     line_color: str = Form(default=DEFAULT_LINE_COLOR),
+    thin_line_assist: bool = Form(default=False),
+    repair_strength: int = Form(default=0, ge=0, le=2),
 ) -> Response:
     """Decode a PNG/JPEG upload and return its line-art PNG without persisting it."""
     if image is None or not image.filename:
@@ -67,7 +69,12 @@ async def extract(
     if decoded is None:
         raise HTTPException(status_code=400, detail="The uploaded file could not be decoded as an image.")
     try:
-        lineart = extract_lineart(decoded, threshold)
+        lineart = extract_lineart(
+            decoded,
+            threshold,
+            thin_line_assist=thin_line_assist,
+            repair_strength=repair_strength,
+        )
         colored_lineart = colorize_lineart(lineart, rgb_line_color)
         success, encoded = cv2.imencode(".png", colored_lineart)
     except (ValueError, cv2.error) as error:
