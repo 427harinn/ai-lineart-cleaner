@@ -1,6 +1,8 @@
 """FastAPI web interface for line art extraction."""
 
 from pathlib import Path
+import re
+from urllib.parse import quote
 
 import cv2
 import numpy as np
@@ -27,6 +29,16 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+def download_filename(filename: str) -> tuple[str, str]:
+    """Return an ASCII fallback and RFC 5987 UTF-8 filename for a PNG download."""
+    base_name = Path(filename.replace("\\", "/")).name
+    stem = re.sub(r"[\x00-\x1f\x7f]", "", Path(base_name).stem).strip(" .")
+    output_name = f"{stem or 'lineart'}-lineart.png"
+    ascii_stem = re.sub(r"[^A-Za-z0-9_-]", "", stem).strip("._-")
+    fallback_name = f"{ascii_stem}-lineart.png" if ascii_stem else "lineart.png"
+    return fallback_name, quote(output_name, safe="")
+
+
 @app.post("/api/extract")
 async def extract(
     image: UploadFile | None = File(default=None),
@@ -50,9 +62,13 @@ async def extract(
         raise HTTPException(status_code=400, detail=f"Could not process image: {error}") from error
     if not success:
         raise HTTPException(status_code=500, detail="Could not encode result as PNG.")
-    stem = Path(image.filename).stem or "lineart"
+    fallback_name, encoded_name = download_filename(image.filename)
+    content_disposition = (
+        f'attachment; filename="{fallback_name}"; '
+        f"filename*=UTF-8''{encoded_name}"
+    )
     return Response(
         content=encoded.tobytes(),
         media_type="image/png",
-        headers={"Content-Disposition": f'attachment; filename="{stem}-lineart.png"'},
+        headers={"Content-Disposition": content_disposition},
     )

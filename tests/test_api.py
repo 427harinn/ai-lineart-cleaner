@@ -35,3 +35,26 @@ def test_extract_rejects_invalid_input():
     assert bad_threshold.status_code == 422
     invalid_image = client.post('/api/extract', files={'image': ('bad.png', b'not an image', 'image/png')})
     assert invalid_image.status_code == 400
+
+
+def test_extract_supports_unicode_and_unsafe_filenames():
+    data = png_bytes(np.array([[20]], dtype=np.uint8))
+    response = client.post(
+        '/api/extract',
+        files={'image': ('説明画像.png', data, 'image/png')},
+    )
+    assert response.status_code == 200
+    assert response.headers['content-type'] == 'image/png'
+    disposition = response.headers['content-disposition']
+    assert 'filename="lineart.png"' in disposition
+    assert "filename*=UTF-8''%E8%AA%AC%E6%98%8E%E7%94%BB%E5%83%8F-lineart.png" in disposition
+    output = cv2.imdecode(np.frombuffer(response.content, np.uint8), cv2.IMREAD_GRAYSCALE)
+    assert output is not None
+
+    response = client.post(
+        '/api/extract',
+        files={'image': ('../line art!?.jpg', data, 'image/jpeg')},
+    )
+    assert response.status_code == 200
+    assert 'filename="lineart-lineart.png"' in response.headers['content-disposition']
+    assert 'filename*=UTF-8\'\'line%20art%21-lineart.png' in response.headers['content-disposition']
