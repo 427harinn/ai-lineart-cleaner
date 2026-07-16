@@ -6,8 +6,10 @@ from app.lineart import (
     DEFAULT_LINE_COLOR,
     DEFAULT_THRESHOLD,
     colorize_lineart,
+    enhance_thin_lines,
     extract_lineart,
     parse_line_color,
+    repair_lineart,
 )
 
 
@@ -40,6 +42,55 @@ def test_colorize_lineart_uses_bgr_for_opencv_and_keeps_background_white():
 def test_default_line_color_is_black():
     assert DEFAULT_LINE_COLOR == "#000000"
     assert np.array_equal(colorize_lineart(np.array([[0]], dtype=np.uint8)), np.zeros((1, 1, 3), dtype=np.uint8))
+
+
+def test_thin_line_assist_is_optional_binary_and_does_not_mutate_input():
+    image = np.full((128, 128), 180, dtype=np.uint8)
+    image[:, 60:63] = 100
+    original = image.copy()
+
+    normal = extract_lineart(image, 80)
+    assisted = extract_lineart(image, 80, thin_line_assist=True)
+
+    assert np.array_equal(normal, np.full_like(image, 255))
+    assert np.count_nonzero(assisted[:, 60:63] == 0) > 0
+    assert assisted.dtype == np.uint8
+    assert set(np.unique(assisted)).issubset({0, 255})
+    assert np.array_equal(image, original)
+
+
+def test_enhance_thin_lines_does_not_mutate_grayscale_input():
+    grayscale = np.full((128, 128), 180, dtype=np.uint8)
+    grayscale[:, 60:63] = 100
+    original = grayscale.copy()
+    enhanced = enhance_thin_lines(grayscale)
+    assert enhanced.dtype == np.uint8
+    assert np.array_equal(grayscale, original)
+
+
+def test_repair_lineart_repairs_small_gaps_without_mutating_input():
+    lineart = np.full((9, 9), 255, dtype=np.uint8)
+    lineart[4, 2:7] = 0
+    lineart[4, 4] = 255
+    original = lineart.copy()
+
+    no_repair = repair_lineart(lineart, 0)
+    weak = repair_lineart(lineart, 1)
+    stronger = repair_lineart(lineart, 2)
+
+    assert np.array_equal(no_repair, lineart)
+    assert weak[4, 4] == 0
+    assert np.count_nonzero(stronger == 0) >= np.count_nonzero(weak == 0)
+    assert np.any(weak == 255)
+    assert weak.dtype == np.uint8
+    assert set(np.unique(weak)).issubset({0, 255})
+    assert np.array_equal(lineart, original)
+
+
+@pytest.mark.parametrize("strength", [-1, 3])
+def test_repair_lineart_rejects_invalid_strength(strength):
+    with pytest.raises(ValueError, match="0, 1, or 2"):
+        repair_lineart(np.full((3, 3), 255, dtype=np.uint8), strength)
 
 
 @pytest.mark.parametrize("value", ["#000000", "#ffffff", "#5A3A32"])

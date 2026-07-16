@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api import app
@@ -42,6 +43,23 @@ def test_extract_applies_requested_line_color():
     assert np.array_equal(output, np.array([[[0, 0, 255], [255, 255, 255]]], dtype=np.uint8))
 
 
+def test_extract_accepts_enhancement_options_together_with_line_color():
+    image = np.full((128, 128), 180, dtype=np.uint8)
+    image[:, 60:63] = 100
+    data = png_bytes(image)
+    for form_data in (
+        {'thin_line_assist': 'true'},
+        {'repair_strength': '1'},
+        {'thin_line_assist': 'true', 'repair_strength': '1', 'line_color': '#336699'},
+    ):
+        response = client.post(
+            '/api/extract', data=form_data,
+            files={'image': ('説明画像.png', data, 'image/png')},
+        )
+        assert response.status_code == 200
+        assert cv2.imdecode(np.frombuffer(response.content, np.uint8), cv2.IMREAD_COLOR) is not None
+
+
 def test_extract_rejects_invalid_input():
     bad_threshold = client.post('/api/extract', data={'threshold': '256'}, files={'image': ('sample.png', png_bytes(np.zeros((1, 1), dtype=np.uint8)), 'image/png')})
     assert bad_threshold.status_code == 422
@@ -49,6 +67,15 @@ def test_extract_rejects_invalid_input():
     assert bad_color.status_code == 422
     invalid_image = client.post('/api/extract', files={'image': ('bad.png', b'not an image', 'image/png')})
     assert invalid_image.status_code == 400
+
+
+@pytest.mark.parametrize('repair_strength', ['-1', '3'])
+def test_extract_rejects_invalid_repair_strength(repair_strength):
+    response = client.post(
+        '/api/extract', data={'repair_strength': repair_strength},
+        files={'image': ('sample.png', png_bytes(np.zeros((1, 1), dtype=np.uint8)), 'image/png')},
+    )
+    assert response.status_code == 422
 
 
 def test_extract_supports_unicode_and_unsafe_filenames():
