@@ -52,7 +52,7 @@ docker run --rm --entrypoint python \
 Dev Container内で実行します。
 
 ```bash
-pytest
+python -m pytest
 python -m py_compile extract_lineart.py app/*.py
 python -m json.tool .devcontainer/devcontainer.json
 git diff --check
